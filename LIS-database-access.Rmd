@@ -49,5 +49,27 @@ Patient_table %>% count(categoryCd)
 
 The `count` function creates a table that shows how many cases have each value in a certain column. In the code above, we asked the `count` function to take the "Patient" table from the database and show us all of the values in the "categoryCd" column, and how many cases in the database have each value. Looking at the table above, what is the most frequent value for the "categoryCd" column?
 
+OK, we've looked at the first table in our database, but what about the other tables? Let's get a look at all of them with the code below:
 
+```{r}
+(Patient_table <- tbl(con, "Patient")) 
+(PatientCase_table <- tbl(con, "PatientCase")) 
+(RelatedPatient_table <- tbl(con, "RelatedPatient")) 
+(Sample_table <- tbl(con, "Sample")) 
+(Test_table <- tbl(con, "Test")) 
+(TestDetail_table <- tbl(con, "TestDetail")) 
+```
+
+Take a minute to look at the types of data in the tables in our database. Have you noticed that some of the columns in different tables have the same names? This is because the data in the different tables are related to each other - this is the whole idea of "relational databases". Let's play around with relating data from two different tables - the Patient and the Sample table. Let's try to determine all the samples we have for a particular patient:
+
+```{r}
+# We will start by filtering the Patient table for a particular patient:
+
+(M.Kobayashi <- 
+  Patient_table %>% 
+    filter(HospitalID == "1247495203")
+)
+```
+
+Now that we've filtered for a single patient, we will join that data to the "Sample" table, using what's called a `left_join`. The idea is that the "Patient" table will be our reference
 
