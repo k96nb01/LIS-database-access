@@ -1,0 +1,53 @@
+---
+title: "LIS Database Access"
+---
+
+In clinical HLA labs, most of your data in stored in Laboratory Information Systems (LIS). Let's learn how to connect to the LIS databases and get at your data! We'll start by loading the libraries we'll need for this project:
+
+```{r}
+library(tidyverse)
+library(DBI)
+library(RSQLite)
+```
+
+## Connecting to Databases
+
+The `dbConnect()` function in the DBI package allows you to create a connection object with the details of a specific database connection. Below we are creating a connection object *con* that utilizes the SQLite driver (expressed as the function `RSQLite::SQLite()` - note that :: before the function references the package that the function is part of, in case there is another package with an identically named function) to connect to a database stored in the file "file_name.db".
+
+```{r}
+# example code - do not run
+con <- dbConnect(drv = RSQLite::SQLite(), # driver - type of SQL connection
+                 dbname = "LIS_database.db") # file (for SQLite or other file-based DBs)
+```
+
+When the connection is established, the *con* connection object will be visible in your environment.
+
+Connections to SQLite are straightforward because they are contained within a single file and do not require additional credentials or other technical connection details (e.g. a port). Review the DBI package documentation and vignettes to learn how to connect to other types of databases using different drivers.
+
+Once connected you may want to see the tables within the database. You can use the `dbListTables()` function on the connection object to review this.
+
+```{r}
+dbListTables(conn = con)
+```
+
+It looks like there are six tables in the database. Let's take a closer look at the first one, "Patient". The `tbl` function will allow us to view the database table in R.
+
+```{r}
+#Connect to the Patient. The code below creates an R table from the "Patient" table our database and assigns it to an object called "Patient_table". Note that by putting the entire piece of code in parentheses (), R will show us the results without having to use the `print()` function.
+
+(Patient_table <- tbl(con, "Patient")) 
+```
+
+Take a look at the Patient table from our LIS database. What kind of data is in each column? How many columns are there? How many rows?
+
+This short line of code is pretty simple, but it's remarkable how much is going on behind the scenes. In order to get data from a database like our LIS database, we need to communicate with it via a computer language called SQL. However, using the `dbplyr` package in R, we don't have to learn another language - we can use the regular R functions we know and they will be silently translated to SQL when R talks to the database. Pretty neat! Let's try a really useful R function called `count`:
+
+```{r}
+# Run the code below. Looking at the code, what do you think it's doing?
+Patient_table %>% count(categoryCd)
+```
+
+The `count` function creates a table that shows how many cases have each value in a certain column. In the code above, we asked the `count` function to take the "Patient" table from the database and show us all of the values in the "categoryCd" column, and how many cases in the database have each value. Looking at the table above, what is the most frequent value for the "categoryCd" column?
+
+
+
