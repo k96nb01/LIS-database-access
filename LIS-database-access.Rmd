@@ -6,7 +6,6 @@ In clinical HLA labs, most of your data in stored in Laboratory Information Syst
 
 ```{r}
 library(tidyverse)
-library(DBI)
 library(RSQLite)
 ```
 
