@@ -101,5 +101,17 @@ We also have increased our table to 38 rows, from the 12 we had before. This mea
    )
 ```
 
+Now that the data is in R, we can analyze it however we want. What if we wanted to determine if any of the HLA antibodies detected in the tests were donor-specific? To do that we would need donor typing information. In our database, both recipients and donors are stored in the "Patient" table, but to determine which donors are patients are linked, we would have to use link to two other tables, as so:
+
+```{r}
+(J.Linnon <- 
+  Patient_table %>% 
+  filter(HospitalID == "1543428220") %>% 
+  left_join(PatientCase_table, join_by(PatientId)) %>% 
+  left_join(RelatedPatient_table, join_by(CaseId)) %>% 
+  left_join(Patient_table, join_by(RelatedPatientID == PatientId), suffix = c(".recipient", ".donor")) %>% 
+  filter(!is.na(UNOSId.donor))
+)
+```
 
 
