@@ -2,7 +2,7 @@
 title: "LIS Database Access"
 ---
 
-In clinical HLA labs, most of your data in stored in Laboratory Information Systems (LIS). Let's learn how to connect to the LIS databases and get at your data! We'll start by loading the libraries we'll need for this project:
+In clinical HLA labs, most of your data in stored in Laboratory Information Systems (LIS). Let's learn how to connect to an LIS database and get at your data! We'll start by loading the libraries we'll need for this project:
 
 ```{r}
 library(tidyverse)
@@ -11,17 +11,17 @@ library(RSQLite)
 
 ## Connecting to Databases
 
-The `dbConnect()` function allows us to create a connection object with the details of a specific database connection. Below we are creating a connection object *con* that utilizes the SQLite driver to connect to our database. Run the code below to have our R session connect to our database:
+The `dbConnect()` function allows us to create a connection with the details needed for our specific database. Below we are creating a connection object *con* that utilizes the SQLite driver to connect to our database. Run the code below to have our R session connect to our database:
 
 ```{r}
 con <- dbConnect(drv = SQLite(), # driver - type of SQL connection
-                 dbname = "LIS_database.db",# The file that contains our database
+                 dbname = "LIS_database.db", # The file that contains our database
                  extended_types = T) # This enables dates to show properly in our database.
 ```
 
 When the connection is established, the *con* connection object will be visible in your environment.
 
-Connections to SQLite are straightforward because they are contained within a single file and do not require additional credentials or other technical connection details (e.g. setting up the connection on your computer first). Connecting the the databases for your LIS will be a bit more complex, but the database we'll use today will work very similarly to an LIS database (it is based on a HistoTrac database). 
+Connections to SQLite are straightforward because they are contained within a single file and do not require additional credentials or other technical connection details (e.g. setting up the connection on your computer first). Connecting to the databases for your LIS will be a bit more complex, but the database we'll use today will work very similarly to an LIS database (it is based on a HistoTrac database). 
 
 Once connected you may want to see the tables within the database. You can use the `dbListTables()` function on the connection object to review this.
 
@@ -46,7 +46,7 @@ This short line of code is pretty simple, but it's remarkable how much is going 
 Patient_table %>% count(categoryCd)
 ```
 
-The `count` function creates a table that shows how many cases have each value in a certain column. In the code above, we asked the `count` function to take the "Patient" table from the database and show us all of the values in the "categoryCd" column, and how many cases in the database have each value. Looking at the table above, what is the most frequent value for the "categoryCd" column?
+The `count` function creates a table that shows how many cases have each value in a certain column. In the code above, we asked the `count` function to take the "Patient" table from the database and show us all of the values in the "categoryCd" column, and how many cases in the database have each value. This is an increadibly helpful way to get a quick look at the data in a database. Using `count` you can quickly see all the possible values in a column, which will help you as you decide how you want to filter your data, etc. Looking at the table above, what is the most frequent value for the "categoryCd" column?
 
 OK, we've looked at the first table in our database, but what about the other tables? Let's get a look at all of them with the code below:
 
@@ -66,7 +66,7 @@ Take a minute to look at the types of data in the tables in our database. Have y
 
 (J.Linnon <- 
   Patient_table %>% 
-    filter(HospitalID == "7487648492")
+    filter(HospitalID == "7487648492") # Filter the table with a single MRN.
 )
 ```
 
@@ -74,44 +74,50 @@ Now that we've filtered for a single patient, we will join that data to the "Sam
 
 ```{r}
 (J.Linnon_samples <- 
-   J.Linnon %>% left_join(Sample_table, join_by(PatientId))
+   J.Linnon %>% left_join(Sample_table, join_by(PatientId)) # This line is set up as "left table" joined to "right table".
    )
 ```
 
-Let's review what we just did. Above, on line 77, we have our code that performs the `left_join`. It's easier to see here that the "J.Linnon" table is on the "left" side of the join, while the "Sample_table" is on the right side. The `join_by` argument shows that we want the tables to be joined by the column called "PatientId", which is present in both of the tables we are joining.  R looked in the "Sample_table" for any values of "PatientId" that matched the value in the "J.Linnon" table, and copied them to the resulting table. You'll notice we started with one row in the "J.Linnon" table and ended up with 12. This means that there were 12 entries in the "Sample_table" that matched to our patient. You'll also notice that the resulting table copied the one row in the "J.Linnon" table to all 12 tables. This is one of the reasons why relational databases have so many tables, so not everything needs to be copied like this!
+Let's review what we just did. Above, on line 77, we have our code that performs the `left_join`. It's easier to see here that the "J.Linnon" table is on the "left" side of the join, while the "Sample_table" is on the right side. The `join_by` argument shows that we want the tables to be joined by the column called "PatientId", which is present in both of the tables we are joining.  R looked in the "Sample_table" for any values of "PatientId" that matched the value in the "J.Linnon" table, and copied them to the resulting table. You'll notice we started with one row in the "J.Linnon" table and ended up with 12. This means that there were 12 entries in the "Sample_table" that matched to our patient. You'll also notice that the resulting table copied the one row in the "J.Linnon" table to all 12 rows in the final table. This is one of the reasons why relational databases have so many tables, so not everything needs to be copied like this all the time!
 
-If we scroll all the way to the end of our table, we'll see four new columns: "SampleID", "OrderingPhysicianId", "SampleTypeCd", and "SampleDt". This is information about the 12 samples for our patient. However, it's not a lot of information. If we want to know if any tests were run on these samples we'll have to join to another table: "Test_table". Let's give that a try.
+If we scroll all the way to the end of our table, we'll see four new columns: "SampleID", "OrderingPhysicianId", "SampleTypeCd", and "SampleDt". This is information about the 12 samples for our patient. However, it's not a lot of information. If we want to know if any tests were run on these samples we'll have to join to another table: "Test_table". Let's give that a try:
 
 ```{r}
 (J.Linnon_samples_tests <- 
    J.Linnon_samples %>% 
-   left_join(Test_table, join_by(SampleID == SampleId), copy = TRUE)
+   left_join(Test_table, join_by(SampleID == SampleId), copy = TRUE) 
    )
 ```
 
-The join above, on line 88, is a bit more complicated. You'll notice the `join_by` function has two arguments. This is because the columns we needed to join by were named slightly differently - "SampleID" on the left side, and "SampleId" on the right. Is is annoying but unfortunately all too common - the programmers setting up this database initially didn't name the columns exactly the same name. 
+The join above, on line 88, is a bit more complicated. You'll notice the `join_by` function has two arguments. This is because the columns we needed to join by were named slightly differently - "SampleID" on the left side, and "SampleId" on the right. Is is annoying but unfortunately all too common - the programmers setting up this database initially didn't name the columns exactly the same name. Luckily, R allows us to specify the names of the columns in each table that we want to join by.
 
 We also have increased our table to 38 rows, from the 12 we had before. This means that at least some of the 12 samples had more than one test performed on them. Our table is also getting very wide - 65 columns in all. Let's simplify our table a bit by selecting only the relevant rows. Then, since we haven't actually downloaded any of this data to R yet (we've just been asking our database to run queries for us), we can pull the result into R using the `collect` function.
 
 ```{r}
 (J.Linnon_samples_tests_DSA <- 
    J.Linnon_samples_tests %>% 
-   select(PatientId:categoryCd, SampleDt, TestDt, TestTypeCd, TestMethodCd, SpecificityTxt) %>%  # Selecting for the columns of interest
-   collect
+   select(PatientId:categoryCd, SampleDt, TestDt, TestTypeCd, TestMethodCd, SpecificityTxt) %>%  # Selecting for the columns of interest.
+   collect # Pull the data into R.
    )
 ```
 
-Now that the data is in R, we can analyze it however we want. What if we wanted to determine if any of the HLA antibodies detected in the tests were donor-specific? To do that we would need donor typing information. In our database, both recipients and donors are stored in the "Patient" table, but to determine which donors are patients are linked, we would have to use link to two other tables, as so:
+Now that the data is in R, we can analyze it however we want. What if we wanted to determine if any of the HLA antibodies detected in the tests were donor-specific? To do that we would need donor typing information. In our database, both recipients and donors are stored in the "Patient" table, but to determine which donors are patients are linked, we would have to link to two other tables, as so:
 
 ```{r}
-(J.Linnon <- 
+(J.el_Radi <- 
   Patient_table %>% 
-  filter(HospitalID == "1543428220") %>% 
-  left_join(PatientCase_table, join_by(PatientId)) %>% 
-  left_join(RelatedPatient_table, join_by(CaseId)) %>% 
-  left_join(Patient_table, join_by(RelatedPatientID == PatientId), suffix = c(".recipient", ".donor")) %>% 
-  filter(!is.na(UNOSId.donor))
+  filter(HospitalID == "1543428220") %>% # Filter the Patient table with an MRN.
+  left_join(PatientCase_table, join_by(PatientId)) %>% # Join to the PatientCase table.
+  left_join(RelatedPatient_table, join_by(CaseId)) %>% # Join to the RelatedPatient table.
+   
+  left_join(Patient_table, join_by(RelatedPatientID == PatientId), suffix = c(".recipient", ".donor")) %>% # Join back to the Patient table. Note that since we are joining back to the table we started with, we will be duplicating column names. The `suffix = c(".recipient", ".donor")` argument in the `left_join` function puts suffixes on any column that has the same name, and makes it easy for us to see which column belongs to the recipient or donor.
+   
+  filter(!is.na(UNOSId.donor)) %>% # Filter for any deceased donors with a UNOS ID.
+  select(PatientId, HospitalID.recipient, firstnm.recipient:categoryCd.recipient, A1Cd.recipient:dq2cd.recipient, UNOSId.donor, A1Cd.donor:dq2cd.donor) %>% # Select columns of interest.
+  collect # Download the result to our R session.
 )
 ```
 
+In the table above we have a single recipient and their donor, with serologic typing for each. We could use this type of table to calculate mismatches, or determine DSA by comparing antibody results to the donor typing, for example.
 
+To recap, in this session we showed how to use R to connect to a relational database, and how to join data from different tables within a database to get at the data we need. The tools presented here will be incredibly helpful as you access data from your HLA lab information systems. The ability to connect to relational databases will allow you to actually get at your data, and understanding how to join data between tables is useful - not just for joining data between databases, but also for joining data between different data sources. Be it joining an Excel file given to you by a researcher to your LIS data, or linking your HLA lab data to IPD-IMGT/HLA derived data, knowing how to join data will help you in your informatics journey!
