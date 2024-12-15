@@ -11,17 +11,17 @@ library(RSQLite)
 
 ## Connecting to Databases
 
-The `dbConnect()` function in the DBI package allows you to create a connection object with the details of a specific database connection. Below we are creating a connection object *con* that utilizes the SQLite driver (expressed as the function `RSQLite::SQLite()` - note that :: before the function references the package that the function is part of, in case there is another package with an identically named function) to connect to a database stored in the file "file_name.db".
+The `dbConnect()` function allows us to create a connection object with the details of a specific database connection. Below we are creating a connection object *con* that utilizes the SQLite driver to connect to our database. Run the code below to have our R session connect to our database:
 
 ```{r}
-# example code - do not run
-con <- dbConnect(drv = RSQLite::SQLite(), # driver - type of SQL connection
-                 dbname = "LIS_database.db") # file (for SQLite or other file-based DBs)
+con <- dbConnect(drv = SQLite(), # driver - type of SQL connection
+                 dbname = "LIS_database.db",# The file that contains our database
+                 extended_types = T) # This enables dates to show properly in our database.
 ```
 
 When the connection is established, the *con* connection object will be visible in your environment.
 
-Connections to SQLite are straightforward because they are contained within a single file and do not require additional credentials or other technical connection details (e.g. a port). Review the DBI package documentation and vignettes to learn how to connect to other types of databases using different drivers.
+Connections to SQLite are straightforward because they are contained within a single file and do not require additional credentials or other technical connection details (e.g. setting up the connection on your computer first). Connecting the the databases for your LIS will be a bit more complex, but the database we'll use today will work very similarly to an LIS database (it is based on a HistoTrac database). 
 
 Once connected you may want to see the tables within the database. You can use the `dbListTables()` function on the connection object to review this.
 
@@ -32,7 +32,7 @@ dbListTables(conn = con)
 It looks like there are six tables in the database. Let's take a closer look at the first one, "Patient". The `tbl` function will allow us to view the database table in R.
 
 ```{r}
-#Connect to the Patient. The code below creates an R table from the "Patient" table our database and assigns it to an object called "Patient_table". Note that by putting the entire piece of code in parentheses (), R will show us the results without having to use the `print()` function.
+#Connect to the Patient table. The code below creates an R table from the "Patient" table in our database and assigns it to an object called "Patient_table". Note that by putting the entire piece of code in parentheses (), R will show us the results without having to use the `print()` function.
 
 (Patient_table <- tbl(con, "Patient")) 
 ```
@@ -64,11 +64,42 @@ Take a minute to look at the types of data in the tables in our database. Have y
 ```{r}
 # We will start by filtering the Patient table for a particular patient:
 
-(M.Kobayashi <- 
+(J.Linnon <- 
   Patient_table %>% 
-    filter(HospitalID == "1247495203")
+    filter(HospitalID == "7487648492")
 )
 ```
 
-Now that we've filtered for a single patient, we will join that data to the "Sample" table, using what's called a `left_join`. The idea is that the "Patient" table will be our reference
+Now that we've filtered for a single patient, we will join that data to the "Sample" table, using what's called a `left_join`. The idea is that the "Patient" table will be on the "left" side of our join, and will be the reference. We will then join to the table on the "right" side using the columns that are common between the two tables. The join will copy any data from the "right" table to the "left" table. This will be easier to visualize, so let's give it a try:
+
+```{r}
+(J.Linnon_samples <- 
+   J.Linnon %>% left_join(Sample_table, join_by(PatientId))
+   )
+```
+
+Let's review what we just did. Above, on line 77, we have our code that performs the `left_join`. It's easier to see here that the "J.Linnon" table is on the "left" side of the join, while the "Sample_table" is on the right side. The `join_by` argument shows that we want the tables to be joined by the column called "PatientId", which is present in both of the tables we are joining.  R looked in the "Sample_table" for any values of "PatientId" that matched the value in the "J.Linnon" table, and copied them to the resulting table. You'll notice we started with one row in the "J.Linnon" table and ended up with 12. This means that there were 12 entries in the "Sample_table" that matched to our patient. You'll also notice that the resulting table copied the one row in the "J.Linnon" table to all 12 tables. This is one of the reasons why relational databases have so many tables, so not everything needs to be copied like this!
+
+If we scroll all the way to the end of our table, we'll see four new columns: "SampleID", "OrderingPhysicianId", "SampleTypeCd", and "SampleDt". This is information about the 12 samples for our patient. However, it's not a lot of information. If we want to know if any tests were run on these samples we'll have to join to another table: "Test_table". Let's give that a try.
+
+```{r}
+(J.Linnon_samples_tests <- 
+   J.Linnon_samples %>% 
+   left_join(Test_table, join_by(SampleID == SampleId), copy = TRUE)
+   )
+```
+
+The join above, on line 88, is a bit more complicated. You'll notice the `join_by` function has two arguments. This is because the columns we needed to join by were named slightly differently - "SampleID" on the left side, and "SampleId" on the right. Is is annoying but unfortunately all too common - the programmers setting up this database initially didn't name the columns exactly the same name. 
+
+We also have increased our table to 38 rows, from the 12 we had before. This means that at least some of the 12 samples had more than one test performed on them. Our table is also getting very wide - 65 columns in all. Let's simplify our table a bit by selecting only the relevant rows. Then, since we haven't actually downloaded any of this data to R yet (we've just been asking our database to run queries for us), we can pull the result into R using the `collect` function.
+
+```{r}
+(J.Linnon_samples_tests_DSA <- 
+   J.Linnon_samples_tests %>% 
+   select(PatientId:categoryCd, SampleDt, TestDt, TestTypeCd, TestMethodCd, SpecificityTxt) %>%  # Selecting for the columns of interest
+   collect
+   )
+```
+
+
 
