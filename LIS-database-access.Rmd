@@ -4,6 +4,16 @@ title: "LIS Database Access"
 
 In clinical HLA labs, most of your data in stored in Laboratory Information Systems (LIS). Let's learn how to connect to an LIS database and get at your data! We'll start by loading the libraries we'll need for this project:
 
+```{r eval=FALSE, include=FALSE}
+# Only run this chunk if packages aren't installed in your R session already.
+
+install.packages(c("rmarkdown", "tidyverse", "RSQLite", "devtools", "kableExtra"))
+
+library(devtools)
+
+install_github("k96nb01/immunogenetr_package")
+```
+
 ```{r}
 library(tidyverse)
 library(RSQLite)
@@ -34,7 +44,9 @@ It looks like there are six tables in the database. Let's take a closer look at 
 ```{r}
 #Connect to the Patient table. The code below creates an R table from the "Patient" table in our database and assigns it to an object called "Patient_table". Note that by putting the entire piece of code in parentheses (), R will show us the results without having to use the `print()` function.
 
-(Patient_table <- tbl(con, "Patient")) 
+(Patient_table <- tbl(con, "Patient")
+ %>% filter(PatientId == 100013447)
+ ) 
 ```
 
 Take a look at the Patient table from our LIS database. What kind of data is in each column? How many columns are there? How many rows?
